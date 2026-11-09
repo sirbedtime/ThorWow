@@ -57,7 +57,7 @@ object ReportFlow {
     }
 
     /**
-     * The 5 minutes ran out: the report (the kept words, the recording) saved to Documents/DS Forever/reports, the note left for
+     * The 5 minutes ran out: the report (the kept words, the recording) saved to Documents/ThorWoW/reports, the note left for
      * the next visit to Settings or the setup screen. Off the main thread. The saved file, or null.
      */
     fun autoSave(ctx: Context, now: Long = System.currentTimeMillis()): java.io.File? {
