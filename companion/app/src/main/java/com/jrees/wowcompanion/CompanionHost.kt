@@ -141,7 +141,13 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
     private val svSeen = HashSet<String>()                              // the run's FIRST word per table decides (a partial restore later must not)
     private var svRun = Long.MIN_VALUE
     private val SV_PLAYER_OPS = setOf("combat", "cface", "uncombat", "uncface", "clear", "command", "spell", "move", "bind", "rspell")
-    private fun svKeptDir() = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "DS Forever/settings")
+    private fun svKeptDir(): java.io.File {
+        val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        val target = java.io.File(documents, "ThorWoW/settings")
+        val legacy = java.io.File(documents, "DS Forever/settings")
+        if (!target.exists() && legacy.isDirectory) runCatching { legacy.copyRecursively(target, overwrite = false) }
+        return target
+    }
     /** the Professions room (professions session): the book of cards and a crafting page per profession */
     private lateinit var professionsView: ProfessionsView
     /** the Calendar room (calendar session): the game's month calendar, look and answer */
@@ -281,7 +287,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
         ui.postDelayed({
             if (gen == reportGen && (reportNotice.state == ReportNotice.State.Compiling || reportNotice.state == ReportNotice.State.Sending)) {
                 reportGen++
-                noticeShow(ReportNotice.State.Failed("it took more than ${REPORT_TIMEOUT_MS / 1000} s; try again, or send the files in Documents/DS Forever/logs"))
+                noticeShow(ReportNotice.State.Failed("it took more than ${REPORT_TIMEOUT_MS / 1000} s; try again, or send the files in Documents/ThorWoW/logs"))
                 DiagLog.event("report", "send: timed out")
             }
         }, if (ReportUpload.enabled) REPORT_TIMEOUT_MS * 2 else REPORT_TIMEOUT_MS)
@@ -2077,7 +2083,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
         }
         shell.setHostContent(FrameLayout(this).apply { setBackgroundColor(android.graphics.Color.rgb(12, 14, 20)); addView(text) })
         if (!hasAllFiles()) {
-            text.text = "DS Forever needs All files access to put its pictures in place.\n\nAllow it on the page that opens, then come back."
+            text.text = "ThorWoW needs All files access to put its pictures in place.\n\nAllow it on the page that opens, then come back."
             try {
                 shell.startHostActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
                     android.net.Uri.parse("package:$packageName")))
@@ -2092,7 +2098,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
             val why = RuntimeArt.unpack(this) { pct -> ui.post { text.text = "Unpacking the companion's pictures… $pct%" } }
             ui.post {
                 if (why == null) shell.recreateHost()
-                else text.text = "The pictures could not be put in place:\n$why\n\nClose DS Forever and start it again to retry."
+                else text.text = "The pictures could not be put in place:\n$why\n\nClose ThorWoW and start it again to retry."
             }
         }.start()
     }
@@ -2682,7 +2688,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
 
     /**
      * THE KEY SWEEP'S TRIGGER (Quests' pad10c probe; the user: "the sweep only on your word"): ONE broadcast from the PC, sent only when
-     * tracking relays the user's "sweep" - `adb shell am broadcast -a app.dsforever.companion.KEYSWEEP -p app.dsforever.companion`.
+     * tracking relays the user's "sweep" - `adb shell am broadcast -a com.sirbedtime.thorwow.KEYSWEEP -p app.dsforever.companion`.
      * The sweep presses only Quests' test keys (CTRL-SHIFT row keys alone, the keytest row's columns), which do nothing in the game;
      * live keys stay off (TapBridge.KEYS_ON). Registered once per app life, inside the launcher only.
      */
@@ -3205,7 +3211,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
         private const val WATCH_GAP_MS = 700L
         /** the router's "pause" after the app's own Start read is the same press (the doc arrives ~0.1-0.4 s later) */
         const val START_DEDUPE_MS = 800L
-        const val SWEEP_ACTION = "app.dsforever.companion.KEYSWEEP"
+        const val SWEEP_ACTION = "com.sirbedtime.thorwow.KEYSWEEP"
         @Volatile private var sweepRegistered = false
         /** a holder seen with its room hidden this long is freed (the one rule for every room; see freeHidden) */
         private const val HIDDEN_GRACE = 3_000L
