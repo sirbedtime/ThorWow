@@ -21,7 +21,7 @@ object CompanionSetup {
     enum class Game(val id: String, val pkg: String, val label: String) {
         GAMENATIVE("gn", "app.gamenative", "GameNative"),
         WOWFOREVER("wf", "app.wowforever", "WoW Forever"),
-        /** the private fork (the user 2026-10-08: "Teach DS Forever the fork's app name" (a)) */
+        /** the private fork (the user 2026-10-08: "Teach ThorWoW the fork's app name" (a)) */
         DSLAUNCHER("dl", "com.sirbedtime.thorwow", "ThorWoW Launcher"),
     }
 
