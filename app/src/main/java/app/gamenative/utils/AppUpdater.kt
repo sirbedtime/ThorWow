@@ -17,9 +17,9 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * DS FOREVER'S SELF-UPDATE, the Android half (Track C, the user's rulings 2026-10-12: "Download + Android install", "The public release
+ * THORWOW'S SELF-UPDATE, the Android half (Track C, the user's rulings 2026-10-12: "Download + Android install", "The public release
  * repo", "At startup, never blocks"). The checks and the download are [AppUpdate]'s (pure, host-tested); here:
- *  - the release repo is ONE build constant (BuildConfig.DSF_RELEASE_REPO; empty = none yet: nothing is fetched);
+ *  - the release repo is ONE build constant (BuildConfig.THORWOW_RELEASE_REPO; empty = none yet: nothing is fetched);
  *  - BEFORE the installer: the downloaded APK must be OUR package, signed by exactly OUR certificate(s), with a higher versionCode
  *    (PackageManager.getPackageArchiveInfo + GET_SIGNING_CERTIFICATES against our own install); anything else is refused and deleted;
  *  - "Install unknown apps": the PLAYER allows it on Android's own screen for this app (ACTION_MANAGE_UNKNOWN_APP_SOURCES); nothing is
@@ -29,8 +29,8 @@ import timber.log.Timber
  */
 object AppUpdater {
     private const val TAG = "WCSETUP"
-    val repo: String get() = BuildConfig.DSF_RELEASE_REPO
-    val userAgent: String get() = "DS-Forever/${BuildConfig.VERSION_NAME}"
+    val repo: String get() = BuildConfig.THORWOW_RELEASE_REPO
+    val userAgent: String get() = "ThorWoW/${BuildConfig.VERSION_NAME}"
 
     fun log(s: String) { Timber.tag(TAG).i(s); android.util.Log.i(TAG, s) }
 
@@ -95,7 +95,7 @@ object AppUpdater {
 
     /** Android's own "Install unknown apps" screen for THIS app: the player flips it there */
     fun openInstallPermissionSettings(context: Context) {
-        log("update: asking the player to allow installs for DS Forever (Android's settings screen)")
+        log("update: asking the player to allow installs for ThorWoW (Android's settings screen)")
         runCatching {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
