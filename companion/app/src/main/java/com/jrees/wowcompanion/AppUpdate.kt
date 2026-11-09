@@ -28,8 +28,8 @@ object AppUpdate {
     @Volatile var api = "https://api.github.com"
 
     /**
-     * The versionNames that are NOT ours (the user's ruling 2026-10-12: the first public release is "1.0.0", versionCode above 222):
-     * a test build still named after the upstream launcher ("2.2.2") counts as older than ANY release, so it never blocks or confuses
+     * The versionNames that are NOT ours: inherited upstream test builds are not ThorWoW releases.
+     * a test build still named after the upstream launcher ("2.2.2") is not treated as a ThorWoW release, so it never blocks or confuses
      * the line. The name only drives the "update available" line; the real gate is the archive's versionCode at verify (AppUpdater).
      */
     val NOT_OURS = setOf("2.2.2")
