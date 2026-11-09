@@ -28,7 +28,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class ProblemReportTest {
     /**
-     * NEVER the network from a test: gradle.properties now names the LIVE receiver (dsfReportEndpoint), and an auto-save test once
+     * NEVER the network from a test: gradle.properties now names the disabled ThorWoW report receiver (thorwowReportEndpoint), and an auto-save test once
      * created a real GitHub issue (#4). Every test runs with no receiver; the upload's own tests set what they need.
      */
     private var liveEndpoint = ""
@@ -154,7 +154,7 @@ class ProblemReportTest {
     @Test fun theIssueLinkIsPrefilledAndRedacted() {
         val r = ProblemReport.build(0L, "x", facts, emptyList(), emptyList(), emptyList(), false, emptyList())
         val url = ProblemReport.issueUrl(r, "Bars blank for Jaina\nmore", facts, "/sdcard/Documents/ThorWoW/reports/r.zip", listOf("Jaina"))
-        assertTrue(url.startsWith("https://github.com/Jreese702/ThorWoW/issues/new?title="))
+        assertTrue(url.startsWith("https://github.com/sirbedtime/ThorWow/issues/new?title="))
         val decoded = URLDecoder.decode(url, "UTF-8")
         assertFalse(decoded.contains("Jaina"))
         assertTrue(decoded, decoded.contains("Problem report: Bars blank for <name>"))
@@ -166,7 +166,7 @@ class ProblemReportTest {
         assertTrue(opened.startsWith("Saved: /sdcard/Documents/ThorWoW/reports/r.zip"))
         assertTrue(opened.contains("attach that file"))
         val none = ProblemReport.sentMessage("/x/r.zip", browserOpened = false)
-        assertTrue(none.contains("Saved: /x/r.zip") && none.contains("No browser opened") && none.contains("github.com/Jreese702/ThorWoW/issues"))
+        assertTrue(none.contains("Saved: /x/r.zip") && none.contains("No browser opened") && none.contains("github.com/sirbedtime/ThorWow/issues"))
     }
 
     // ---- the report page and its flow (the user's rules)
@@ -207,7 +207,7 @@ class ProblemReportTest {
         assertTrue(f.isFile)
         val note = ReportFlow.pending!!
         assertEquals(f.path, note.path)
-        assertTrue(note.url.startsWith("https://github.com/Jreese702/ThorWoW/issues/new"))
+        assertTrue(note.url.startsWith("https://github.com/sirbedtime/ThorWow/issues/new"))
         assertTrue(URLDecoder.decode(note.url, "UTF-8").contains("bars went blank"))
         assertTrue(ReportFlow.noteTitle(note).startsWith("Your problem report was saved ("))
         assertEquals("", ReportFlow.description)                        // used
@@ -301,8 +301,8 @@ class ProblemReportTest {
     }
 
     @Test fun theReceiversAnswer() {
-        val ok = ReportUpload.parse(201, "{\"number\":42,\"url\":\"https://github.com/Jreese702/ThorWoW/issues/42\"}")
-        assertEquals(ReportUpload.Sent(42, "https://github.com/Jreese702/ThorWoW/issues/42"), ok.getOrThrow())
+        val ok = ReportUpload.parse(201, "{\"number\":42,\"url\":\"https://github.com/sirbedtime/ThorWow/issues/42\"}")
+        assertEquals(ReportUpload.Sent(42, "https://github.com/sirbedtime/ThorWow/issues/42"), ok.getOrThrow())
         assertEquals("too many reports today; try again tomorrow",
             ReportUpload.parse(429, "{\"error\":\"too many reports today; try again tomorrow\"}").exceptionOrNull()!!.message)
         assertEquals("the receiver answered 500", ReportUpload.parse(500, "<html>").exceptionOrNull()!!.message)
