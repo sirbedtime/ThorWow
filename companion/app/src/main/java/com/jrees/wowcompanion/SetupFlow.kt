@@ -45,7 +45,7 @@ object SetupFlow {
         val gameOutdated: String? = null,
         /** a newer app version, until "Later" */
         val appUpdate: String? = null,
-        /** the app's own update line (AppUpdate.line: "DS Forever <ver>: up to date / update <ver> available / ... skipped (...)") */
+        /** the app's own update line (AppUpdate.line: "ThorWoW <ver>: up to date / update <ver> available / ... skipped (...)") */
         val appLine: String? = null,
         /** the background all-icons step's line (AllIcons.line): optional, never gates Play */
         val iconsLine: String? = null,
@@ -55,7 +55,7 @@ object SetupFlow {
         val staleData: String? = null,
         /** a problem report saved by itself and not opened yet (ReportFlow.noteTitle), null = none */
         val reportSaved: String? = null,
-        /** DS Forever runs from the SD card / adopted storage (InstallCheck): the container can't be made there */
+        /** ThorWoW runs from the SD card / adopted storage (InstallCheck): the container can't be made there */
         val installedExternal: Boolean = false,
         /** launching / updating / downloading: what is happening (Play waits) */
         val busy: String? = null,
@@ -71,7 +71,7 @@ object SetupFlow {
     enum class Action {
         CHOOSE_FOLDER, GRANT_STORAGE, ENTER_LOGIN, SKIP_LOGIN, RETRY_ART, UPDATE_GAME, UPDATE_APP, LATER_APP,
         UPDATE_LOGIN, ENTER_ON_GAME, RESTART_GAME, PLAY,
-        /** Android's App info page for DS Forever (Storage > Change: move it to internal storage) */
+        /** Android's App info page for ThorWoW (Storage > Change: move it to internal storage) */
         OPEN_APP_SETTINGS,
         /** the restart's own Play (never a button): it launches the same way and says so in the log */
         RELAUNCH,
@@ -92,7 +92,7 @@ object SetupFlow {
     enum class Mark { OK, WAIT, BAD, OPTIONAL }
     data class Check(val label: String, val mark: Mark)
 
-    /** the "DS Forever vX is out" pop-up holds Play until Update or Later (board b-update-blocks-play) */
+    /** the "ThorWoW vX is out" pop-up holds Play until Update or Later (board b-update-blocks-play) */
     /**
      * The bottom screen's setup takes the pad (the gold box, the A glyph, D-pad / A) only before Play. In the game, at its login screen,
      * the pop-ups are touch only (b-login-a-input, the user 15 Oct: pressing A must never open "Update login" by accident).
@@ -128,18 +128,18 @@ object SetupFlow {
             i.gameClosed != null && i.folderFound && !i.wrongGame && i.storage -> Prompt("closed", "The game closed", i.gameClosed,
                 listOf(Button("Send a problem report", Action.REPORT), Button("OK", Action.GAME_CLOSED_OK)))
             !i.storage -> Prompt("storage", "Allow file access",
-                "Android needs \"All files access\" so the game and DS Forever can read the game folder.",
+                "Android needs \"All files access\" so the game and ThorWoW can read the game folder.",
                 listOf(Button("Open settings", Action.GRANT_STORAGE)))
             i.art == Art.FAILED -> Prompt("art", "The game art couldn't be built",
                 i.artWhy.ifEmpty { "The game files could not be read." }, listOf(Button("Try again", Action.RETRY_ART)))
             // before the client's pop-up: its "Play anyway" waits for this choice (canPlay)
-            i.appUpdate != null -> Prompt("app", "DS Forever ${i.appUpdate} is out", "Update now, or later from this screen.",
+            i.appUpdate != null -> Prompt("app", "ThorWoW ${i.appUpdate} is out", "Update now, or later from this screen.",
                 listOf(Button("Update", Action.UPDATE_APP, i.busy == null), Button("Later", Action.LATER_APP)))
             i.gameOutdated != null -> Prompt("client", "Game update needed",
                 "The servers need build ${i.gameOutdated}. Signing in may fail with these files. Update on Wi-Fi: the game art then fetches about 180 MB of the game's tables.",
                 listOf(Button("Update", Action.UPDATE_GAME, i.busy == null), Button("Play anyway", Action.PLAY, canPlay(i))))
             i.reportSaved != null && (i.loginSaved || i.loginSkipped) -> Prompt("report", i.reportSaved,
-                if ("was sent" in i.reportSaved) "Open the issue to see it." else "It is in Documents/DS Forever/reports. Open the GitHub issue to post it.",
+                if ("was sent" in i.reportSaved) "Open the issue to see it." else "It is in Documents/ThorWoW/reports. Open the GitHub issue to post it.",
                 listOf(Button("Open GitHub issue", Action.REPORT_OPEN), Button("Dismiss", Action.REPORT_DISMISS)))
             !i.loginSaved && !i.loginSkipped -> Prompt("login", "Your Battle.net login",
                 "Save it once and the game signs you in by itself. It stays encrypted on this device.",
@@ -158,7 +158,7 @@ object SetupFlow {
 
     /**
      * M3: the game's login screen. The SAME buttons the whole time, until past the login screen (the user's ruling); only the headline
-     * follows the sign-in. DS Forever never types the password (the user's standing rule): "Keyboard" toggles the
+     * follows the sign-in. ThorWoW never types the password (the user's standing rule): "Keyboard" toggles the
      * keyboard on the top screen for the user.
      */
     private fun signInPrompt(i: Inputs): Prompt? {
@@ -192,7 +192,7 @@ object SetupFlow {
     }
 
     fun checks(i: Inputs): List<Check> = buildList {
-        if (i.installedExternal) add(Check("DS Forever: on the SD card - move it to internal storage", Mark.BAD))
+        if (i.installedExternal) add(Check("ThorWoW: on the SD card - move it to internal storage", Mark.BAD))
         add(when {
             !i.folderFound -> Check("Game folder: not found (${i.path})", Mark.BAD)
             i.wrongGame -> Check("Game folder: ${i.product.ifEmpty { "another game" }}, not WoW Forever", Mark.BAD)
