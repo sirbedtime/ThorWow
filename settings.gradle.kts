@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DS-Forever"
+rootProject.name = "ThorWoW"
 include(":app")
-include(":dsforever")   // DS Forever fork: the companion inside the launcher
+include(":dsforever")   // Embedded dual-screen companion
