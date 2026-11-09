@@ -60,7 +60,7 @@ class SetupPanel(context: Context) : View(context) {
         screen = s
         if (s?.prompt?.id != was) focus = 0          // a new pop-up: the box starts on its first button
         visibility = if (s != null && (s.prompt != null || s.play != null)) VISIBLE else GONE
-        contentDescription = if (s?.report != null) "DS Forever start-up. $SPEAKER_LABEL" else null
+        contentDescription = if (s?.report != null) "ThorWoW start-up. $SPEAKER_LABEL" else null
         invalidate()
     }
 
@@ -242,7 +242,7 @@ class SetupPanel(context: Context) : View(context) {
         /** the speakerphone's square: 48 dp on the Thor's bottom screen (the touch minimum, as BUTTON_H) */
         const val SPEAKER = 111f
         /** its accessibility label (the long one) */
-        const val SPEAKER_LABEL = "Report a problem: send DS Forever a problem report (the speakerphone, bottom left)"
+        const val SPEAKER_LABEL = "Report a problem: send ThorWoW a problem report (the speakerphone, bottom left)"
         const val LINE_H = 52f
         private val KEYS = setOf(KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_SELECT)
