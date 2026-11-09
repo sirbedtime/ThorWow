@@ -12,14 +12,14 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /**
- * "SEND A PROBLEM REPORT" (board f-problem-report; the user's picks). The player says what happened; DS Forever bundles the last
+ * "SEND A PROBLEM REPORT" (board f-problem-report; the user's picks). The player says what happened; ThorWoW bundles the last
  * [WINDOW_MS] of its own diagnostic log ([DiagLog]) and its own logcat lines ([ourTag]), the newest crash reports, the versions and the
- * device, ALL through [Redact]. It is shown before anything is saved; it is saved only where the player chooses (Documents/DS Forever/
- * reports) and a GitHub issue is only opened in the browser, pre-filled, for them to attach the file. DS Forever uploads nothing.
+ * device, ALL through [Redact]. It is shown before anything is saved; it is saved only where the player chooses (Documents/ThorWoW/
+ * reports) and a GitHub issue is only opened in the browser, pre-filled, for them to attach the file. ThorWoW uploads nothing.
  */
 object ProblemReport {
     const val WINDOW_MS = 15 * 60_000L
-    const val REPO = "Jreese702/DS-Forever"
+    const val REPO = "sirbedtime/ThorWow"
     private const val MAX_DESCRIPTION_IN_URL = 1500
     private const val MAX_CRASHES = 3
 
@@ -51,12 +51,12 @@ object ProblemReport {
         val pattern = Redact.namePattern(names)                       // compiled once for the whole report
         val r = { s: String -> Redact.text(s, pattern) }
         val head = buildString {
-            appendLine("DS Forever problem report, ${stamp(now)}")
+            appendLine("ThorWoW problem report, ${stamp(now)}")
             appendLine()
             appendLine("What happened (the player's words):")
             appendLine(r(description.trim()).ifEmpty { "(not filled in)" })
             appendLine()
-            appendLine("DS Forever: ${facts.app}")
+            appendLine("ThorWoW: ${facts.app}")
             appendLine("Add-ons: ${facts.addons}")
             appendLine("Game: ${r(facts.game)}")
             appendLine("Device: ${facts.device}")
@@ -64,7 +64,7 @@ object ProblemReport {
             if (startup.isNotBlank()) appendLine("Diagnostics: diagnostics.txt (device, game folder, art, start-up stages, our log)")
             if (facts.settings.isNotEmpty()) { appendLine(); appendLine("Settings and state:"); facts.settings.forEach { appendLine("  ${r(it)}") } }
             appendLine()
-            appendLine("Everything here went through DS Forever's privacy pass: logins, BattleTags, character, realm, guild and party names,")
+            appendLine("Everything here went through ThorWoW's privacy pass: logins, BattleTags, character, realm, guild and party names,")
             appendLine("chat text and IP addresses are replaced by <email>, <battletag>, <name>, <text>, <ip>.")
         }
         // issue #9: our lines kept, the expected CascLib / CDN noise summarised, errors / crashes / exits / setup LAST (LogSieve)
@@ -79,17 +79,17 @@ object ProblemReport {
         for ((n, t) in gameCrashes.take(MAX_GAME_CRASHES)) files += "game-crashes/$n" to r(LogSieve.gameCrashHead(t))
         // DXVK's own log, this run's and the previous one's (b-dxvk-load-crash)
         if (dxvk.isNotBlank()) files += "dxvk.txt" to r(dxvk)
-        return Report("ds-forever-report-${stamp(now)}", files)
+        return Report("thorwow-report-${stamp(now)}", files)
     }
 
     /** the browser's pre-filled issue: the title, the version and device, the player's words (redacted, shortened), the file to attach */
     fun issueUrl(report: Report, description: String, facts: Facts, savedAs: String?, names: Collection<String>): String {
         val words = Redact.text(description.trim(), names).let { if (it.length > MAX_DESCRIPTION_IN_URL) it.take(MAX_DESCRIPTION_IN_URL) + "…" else it }
-        val title = "Problem report: " + (words.lineSequence().firstOrNull()?.take(70)?.ifEmpty { null } ?: "DS Forever ${facts.app}")
+        val title = "Problem report: " + (words.lineSequence().firstOrNull()?.take(70)?.ifEmpty { null } ?: "ThorWoW ${facts.app}")
         val body = buildString {
             appendLine("**What happened**"); appendLine(words.ifEmpty { "(please describe it)" }); appendLine()
-            appendLine("**DS Forever** ${facts.app} · add-ons ${facts.addons} · ${facts.device}"); appendLine()
-            appendLine("**Report file**: please attach ${savedAs ?: "${report.name}.zip"} (DS Forever saved it on the device; nothing was uploaded).")
+            appendLine("**ThorWoW** ${facts.app} · add-ons ${facts.addons} · ${facts.device}"); appendLine()
+            appendLine("**Report file**: please attach ${savedAs ?: "${report.name}.zip"} (ThorWoW saved it on the device; nothing was uploaded).")
         }
         fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
         return "https://github.com/$REPO/issues/new?title=${enc(title)}&body=${enc(body)}"
@@ -104,7 +104,7 @@ object ProblemReport {
 
     // ------------------------------------------------------------------ on the device
 
-    /** where a player finds it: Documents/DS Forever/reports with all-files access, else the app's own folder */
+    /** where a player finds it: Documents/ThorWoW/reports with all-files access, else the app's own folder */
     fun reportsDir(ctx: Context): File = publicOr(ctx, "reports")
 
     /** the crash reports CrashLogs (the launcher) keeps: the same folder rule */
@@ -112,9 +112,13 @@ object ProblemReport {
 
     private fun publicOr(ctx: Context, sub: String): File {
         val shared = runCatching {
-            if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager())
-                File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "DS Forever/$sub")
-            else null
+            if (Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()) {
+                val documents = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), "")
+                val target = File(documents, "ThorWoW/$sub")
+                val legacy = File(documents, "DS Forever/$sub")
+                if (!target.exists() && legacy.isDirectory) runCatching { legacy.copyRecursively(target, overwrite = false) }
+                target
+            } else null
         }.getOrNull()
         return shared ?: File(ctx.getExternalFilesDir(null) ?: ctx.filesDir, sub)
     }
@@ -167,8 +171,8 @@ object ProblemReport {
     }
 
     /**
-     * DS Forever's logcat since [sinceMs]: EVERY process of the app (an app reads its own user's lines without a permission), not just
-     * this one: a run of DS Forever that crashed and restarted, and its FATAL EXCEPTION, were cut out by --pid (issue #9)
+     * ThorWoW's logcat since [sinceMs]: EVERY process of the app (an app reads its own user's lines without a permission), not just
+     * this one: a run of ThorWoW that crashed and restarted, and its FATAL EXCEPTION, were cut out by --pid (issue #9)
      */
     fun logcat(sinceMs: Long): List<String> = runCatching {
         val since = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US).format(Date(sinceMs))
