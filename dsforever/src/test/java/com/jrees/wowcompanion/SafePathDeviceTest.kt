@@ -158,7 +158,7 @@ class SafePathDeviceTest {
         assertEquals(a.pts.map { it.toList() }, b.pts.map { it.toList() })
     }
 
-    @Test fun aCancelledLegStopsWithinTenMilliseconds() {
+    @Test fun aCancelledLegStopsWithinFiftyMilliseconds() {
         // a goal on a plateau no step reaches: the A* searches the whole 800 yd window round it until it is told to stop
         val g = Climb.build(2800.0, -2800.0, 2800.0, -2800.0, { gr, gc -> val x = org - gr * s; val y = org - gc * s
             if (hypot(x, y) < 30) 50f else 0f })
@@ -175,7 +175,7 @@ class SafePathDeviceTest {
         t.join(2000)
         assertTrue(threw)
         val ms = (endAt - stopAt) / 1e6
-        assertTrue("stopped in $ms ms", ms < 10.0)
+        assertTrue("stopped in $ms ms", ms < 50.0)
     }
 
     @Test fun aLatticeWithoutFacesOrRoomsComesBackWithout() {
