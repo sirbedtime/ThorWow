@@ -31,7 +31,7 @@ object LauncherSetup {
     private val FPS_PAIR = listOf("useMaxFPS" to "1", "maxFPS" to "40")
 
     fun run(ctx: Context, flavorRoot: File): String = try { work(ctx, flavorRoot) } catch (t: Throwable) {
-        Log.w(TAG, "launcher setup: ${t.message}"); "DS Forever setup failed: ${t.message}"
+        Log.w(TAG, "launcher setup: ${t.message}"); "ThorWoW setup failed: ${t.message}"
     }
 
     private fun work(ctx: Context, root: File): String {
@@ -44,7 +44,7 @@ object LauncherSetup {
         val stamp = File(addons, "WowCompanion/$STAMP").takeIf { it.isFile }?.readText()?.trim()?.toIntOrNull()
         val diff = want.count { (md5, rel) -> md5Of(File(addons, rel)) != md5 }
         val update = appSet != null && stamp != null && stamp < appSet && diff > 0
-        var line = "DS Forever add-ons: set ${stamp ?: "none"}, app set $appSet, $diff differ"
+        var line = "ThorWoW add-ons: set ${stamp ?: "none"}, app set $appSet, $diff differ"
         if (missing || update) {
             val backup = File("/sdcard/WowCompanion/setup/launcher-${System.currentTimeMillis()}").apply { mkdirs() }
             for (f in folders) File(addons, f).takeIf { it.isDirectory }?.copyRecursively(File(backup, "addons/$f"), overwrite = true)
@@ -61,11 +61,11 @@ object LauncherSetup {
                 val bad = want.count { (md5, rel) -> md5Of(File(addons, rel)) != md5 }
                 check(bad == 0) { "$bad copied files do not match the set" }
                 appSet?.let { File(addons, "WowCompanion/$STAMP").writeText("$it\n") }
-                line = "DS Forever add-ons ${if (missing) "installed" else "updated"}: set $appSet, ${want.size} files"
+                line = "ThorWoW add-ons ${if (missing) "installed" else "updated"}: set $appSet, ${want.size} files"
             } catch (t: Throwable) {
                 // the old set back, as the script's restore
                 for (f in folders) { File(addons, f).deleteRecursively(); File(backup, "addons/$f").takeIf { it.isDirectory }?.copyRecursively(File(addons, f)) }
-                line = "DS Forever add-ons NOT installed (${t.message}); the old set is back"
+                line = "ThorWoW add-ons NOT installed (${t.message}); the old set is back"
             }
         }
         line += "; " + config(File(root, "WTF/Config.wtf"))
