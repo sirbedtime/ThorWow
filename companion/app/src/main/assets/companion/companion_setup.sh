@@ -40,8 +40,8 @@ gn) ROOT="$GN_ROOT"; PKG=${WC_PKG:-app.gamenative}
 wf) ROOT="$WF_ROOT"; PKG=${WC_PKG:-app.wowforever}
     CT=${WC_WF_CT:-/data/data/app.wowforever/files/imagefs_shared/home/xuser-wow_forever/.container} ;;
 # the private fork "DS Forever Launcher" (2026-10-08): WoW Forever's code under its own package, the SAME game folder
-dl) ROOT="$WF_ROOT"; PKG=${WC_PKG:-app.dsforever.launcher}
-    CT=${WC_DL_CT:-/data/data/app.dsforever.launcher/files/imagefs_shared/home/xuser-wow_forever/.container} ;;
+dl) ROOT="$WF_ROOT"; PKG=${WC_PKG:-com.sirbedtime.thorwow}
+    CT=${WC_DL_CT:-/data/data/com.sirbedtime.thorwow/files/imagefs_shared/home/xuser-wow_forever/.container} ;;
 *) echo "FAIL usage unknown game"; echo END; exit 1 ;;
 esac
 A="$ROOT/Interface/AddOns"
