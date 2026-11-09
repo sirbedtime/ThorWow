@@ -45,9 +45,10 @@ launcher does not grant beta entitlement or bypass Blizzard authentication.
 ## Diagnostics and privacy
 
 The companion's problem-report flow redacts sensitive account and character
-information before saving a report. Reports are saved locally for the user to
-review and share; this project does not silently upload them. Diagnostic logs
-must never include passwords, authentication tokens, or other credentials.
+information before saving a report. The ThorWoW build has no report-upload
+endpoint configured: reports are saved locally and the user can choose to open
+a pre-filled issue in the browser. Diagnostic logs must never include passwords,
+authentication tokens, or other credentials.
 
 ThorWoW uses its own Android package ID, app updater identity, and report issue
 destination. It migrates existing companion settings/reports from the legacy
