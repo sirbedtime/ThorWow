@@ -25,8 +25,8 @@ android {
         buildConfigField("boolean", "SHARE", "false")
         // the problem report's receiver (tools/report-worker/README.md): "" = save + the browser's pre-filled issue, as before.
         // No secret: the key ships in the APK and only keeps casual traffic out of the receiver
-        buildConfigField("String", "REPORT_ENDPOINT", "\"${(findProperty("dsfReportEndpoint") as String?).orEmpty()}\"")
-        buildConfigField("String", "REPORT_KEY", "\"${(findProperty("dsfReportKey") as String?).orEmpty()}\"")
+        buildConfigField("String", "REPORT_ENDPOINT", "\"${(findProperty("thorwowReportEndpoint") as String?).orEmpty()}\"")
+        buildConfigField("String", "REPORT_KEY", "\"${(findProperty("thorwowReportKey") as String?).orEmpty()}\"")
     }
     buildFeatures { buildConfig = true }
     compileOptions {
