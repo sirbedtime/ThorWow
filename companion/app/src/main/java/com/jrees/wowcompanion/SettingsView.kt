@@ -517,10 +517,10 @@ class SettingsView(context: Context, private val onReload: () -> Unit) : View(co
         btnReport = row(c, y, saved?.let { ReportFlow.noteTitle(it) } ?: "Problem report",
             when {
                 saved != null && saved.sent > 0 -> "Open the issue to see it."
-                saved != null -> "Open the GitHub issue to post it (the file is in Documents/DS Forever/reports)."
+                saved != null -> "Open the GitHub issue to post it (the file is in Documents/ThorWoW/reports)."
                 rec -> "Recording… %d:%02d left. Send it when the problem happened.".format(left / 60, left % 60)
                 ReportFlow.description.isNotBlank() -> "Your unsent report is kept: Send to finish it."
-                else -> "Say what happened; DS Forever adds its logs, without names or logins."
+                else -> "Say what happened; ThorWoW adds its logs, without names or logins."
             }, enabled = true) { box ->
             val b = RectF(box.right - 260f, box.centerY() - 34f, box.right - 16f, box.centerY() + 34f)
             UiKit.button(c, b, when { saved != null -> "Open issue"; rec -> "Send report"; else -> "Send" }, UiKit.Button.UP)
@@ -569,7 +569,7 @@ class SettingsView(context: Context, private val onReload: () -> Unit) : View(co
             "questtrail" -> addonWord(ThirdPartyAddons.QUESTTRAIL, "the line follows its arrow, no game pin")
             "vanilla" -> if (Settings.ROUTE_MODES_ON) "The game's own way: the line points straight at the quest, no route, the game's pin left alone"
                          else "The line points straight at the quest. SafePath, QuestTrail and Polestar come in a later update"
-            else -> "DS Forever's route: round mobs and cliffs, by roads, ways and rides, checkpoint flags"
+            else -> "ThorWoW's route: round mobs and cliffs, by roads, ways and rides, checkpoint flags"
         }
         row(c, y, "Quest tracking", sub, enabled = true) { box ->
             // four choices: never more than two thirds of the row, the label and its line keep the rest
@@ -895,7 +895,7 @@ class SettingsView(context: Context, private val onReload: () -> Unit) : View(co
                 FrameGen.Row.DLL -> btnDll = row(c, y, "Lossless.dll: ${if (hasDll) "found" else "not set"}",
                     when {
                         FrameGen.lastPick.isNotEmpty() -> FrameGen.lastPick + if (up && hasDll) ". $later" else ""
-                        hasDll -> "Your own copy, kept in DS Forever's private storage."
+                        hasDll -> "Your own copy, kept in ThorWoW's private storage."
                         else -> "Choose your own copy (from Lossless Scaling on your PC)."
                     }, enabled = true) { box ->
                     val b = RectF(box.right - 260f, box.centerY() - 34f, box.right - 16f, box.centerY() + 34f)
