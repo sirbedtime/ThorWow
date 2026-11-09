@@ -1,0 +1,76 @@
+package com.jrees.wowcompanion
+
+import android.content.Context
+import android.content.SharedPreferences
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * THE PROBLEM REPORT'S FLOW (board f-problem-report; the user's rules after the two-button screen):
+ * - the player's words are REQUIRED ([canSend]) before Send report or Record 5 minutes;
+ * - Record 5 minutes keeps the words ([description]) with the recording; Settings' row then says "Send report" (stop + send now);
+ * - the 5 minutes running out SAVES the report by itself ([autoSave]: no browser mid-game) and leaves a note ([pending]) on Settings
+ *   and the setup screen, "Your problem report was saved (<time>)" with Open GitHub issue, until it is opened or dismissed.
+ * Kept in the app's own preferences, so it survives a restart.
+ */
+object ReportFlow {
+    private var prefs: SharedPreferences? = null
+    private val listeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    fun init(c: Context) { if (prefs == null) prefs = c.applicationContext.getSharedPreferences("report", Context.MODE_PRIVATE) }
+    fun onChange(l: () -> Unit) { listeners.add(l) }
+    private fun changed() { for (l in listeners) runCatching { l() } }
+
+    /** something said (the Thor, batch15: "two words" kept Record grey after a short line): 3+ characters, a letter or digit among them */
+    fun canSend(text: String): Boolean {
+        val t = text.trim()
+        return t.length >= 3 && t.any(Char::isLetterOrDigit)
+    }
+
+    /** the words kept with a recording (Record 5 minutes), "" = none */
+    var description: String
+        get() = prefs?.getString("description", "") ?: ""
+        set(v) { prefs?.edit()?.putString("description", v)?.apply() }
+
+    /** [sent] > 0: it was SENT as that issue number (Record 5 minutes ending by itself, with a receiver), [url] = the issue */
+    data class Saved(val path: String, val at: Long, val url: String, val sent: Int = 0)
+
+    /** the report saved by itself and not opened or dismissed yet */
+    val pending: Saved?
+        get() {
+            val p = prefs ?: return null
+            val path = p.getString("savedPath", null) ?: return null
+            return Saved(path, p.getLong("savedAt", 0L), p.getString("savedUrl", "") ?: "", p.getInt("sentNumber", 0))
+        }
+
+    fun markSaved(path: String, at: Long, url: String, sent: Int = 0) {
+        prefs?.edit()?.putString("savedPath", path)?.putLong("savedAt", at)?.putString("savedUrl", url)?.putInt("sentNumber", sent)?.apply()
+        changed()
+    }
+
+    /** opened or dismissed: the note goes */
+    fun clearPending() { prefs?.edit()?.remove("savedPath")?.remove("savedAt")?.remove("savedUrl")?.remove("sentNumber")?.apply(); changed() }
+
+    fun noteTitle(s: Saved): String = SimpleDateFormat("HH:mm", Locale.US).format(Date(s.at)).let { t ->
+        if (s.sent > 0) "Your problem report was sent ($t, issue #${s.sent})" else "Your problem report was saved ($t)"
+    }
+
+    /**
+     * The 5 minutes ran out: the report (the kept words, the recording) saved to Documents/DS Forever/reports, the note left for
+     * the next visit to Settings or the setup screen. Off the main thread. The saved file, or null.
+     */
+    fun autoSave(ctx: Context, now: Long = System.currentTimeMillis()): java.io.File? {
+        init(ctx)
+        val words = description.ifBlank { "(recorded with Record 5 minutes; no description kept)" }
+        val r = ProblemReport.collect(ctx, words, now)
+        val f = ProblemReport.save(ctx, r) ?: return null
+        // with a receiver in this build it is SENT too, in the background (the player's own Record session ended): the note says which
+        val sent = if (ReportUpload.enabled) ReportUpload.send(ReportUpload.request(r, words, ProblemReport.facts(ctx), true)).getOrNull() else null
+        if (sent != null) markSaved(f.path, now, sent.url, sent.number)
+        else markSaved(f.path, now, ProblemReport.issueUrl(r, words, ProblemReport.facts(ctx), f.path, Redact.names()))
+        description = ""
+        DiagLog.event("report", if (sent != null) "sent by itself after the recording (issue #${sent.number})" else "saved by itself after the recording")
+        return f
+    }
+}

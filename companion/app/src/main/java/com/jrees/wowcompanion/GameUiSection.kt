@@ -1,0 +1,549 @@
+package com.jrees.wowcompanion
+
+import android.content.Context
+import android.graphics.*
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import kotlin.math.abs
+
+/**
+ * SettingsView's drawn depth: GAME + MAP + CONTROLLER at 96 px rows end at 936 px, plus its
+ * 24 px bottom pad. Raise it when SettingsView gains a section.
+ */
+const val SETTINGS_H = 960
+
+/**
+ * The Settings room as the hub hosts it: ONE LONG PAGE, [settingsView] (map session) with the
+ * GAME UI section as its last section, in a scroll container.
+ *
+ * SettingsView scrolls by itself when it is shorter than its content, and does not measure
+ * itself. Two scrollers inside each other would fight over the same drag, so it is given its
+ * whole depth here ([SETTINGS_H], as its MINIMUM height, which is what the default onMeasure
+ * answers with): it then has nothing to scroll, and this container scrolls the page. The day
+ * SettingsView measures its own content, that answer wins and the constant stops mattering.
+ *
+ * NOT fillViewport: that pass re-measures the column at the room's exact height, the default
+ * onMeasure then answers with ALL of it, and the section below is pushed off the screen.
+ */
+fun settingsRoom(context: Context, settingsView: View): View = ScrollView(context).apply {
+    setBackgroundColor(Theme.ink)
+    addView(LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL
+        settingsView.minimumHeight = SETTINGS_H
+        addView(settingsView, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        addView(GameUiSection(context), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        // Home's one setting, the bars at rest (home session; user 15:27: "In Settings")
+        addView(HomeSettingsSection(context), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    })
+}
+
+/**
+ * The Settings room's GAME UI section: which of the game's own elements stay on the top screen.
+ *
+ * LAYOUT (user ruling 2026-09-27): rows carry an icon, a name and the current mode, and NO
+ * buttons. Tap a row to select it, and ONE three-way bar appears for it: On / Off / Dynamic.
+ * On and Off speak about the game's element (On = the game keeps drawing it).
+ *
+ * A self-contained view, so SettingsView.kt (map session) is not edited: the hub stacks this
+ * under it. It draws with the same metrics and colours as SettingsView's rows.
+ *
+ * Touches act on RELEASE, and only when the finger has not moved: the section sits in a scroll
+ * container, and a drag must not pick a mode.
+ */
+class GameUiSection(context: Context, private val part: Part = Part.ALL) : View(context) {
+
+    /**
+     * THE SETTINGS TABS (board f-settings-tabs): the game's elements are the "Top screen" tab ([Part.GAME_UI]) and the companion's
+     * status is on "System" ([Part.COMPANION]); [Part.ALL] is both, as before the tabs.
+     */
+    enum class Part { ALL, GAME_UI, COMPANION, QOL }
+    private val hasUi get() = part != Part.COMPANION
+    private val hasStatus get() = part != Part.GAME_UI
+
+    private val pFill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 2f
+        strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+    }
+    private val pSection = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 32f; color = Theme.gold }   // a heading, in Morpheus
+    private val pLabel = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 31f; color = Theme.text }
+    private val pSub = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 22f; color = Theme.textDim }
+    private val pMode = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 27f; textAlign = Paint.Align.RIGHT; typeface = Typeface.DEFAULT_BOLD
+    }
+    private val pSeg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 27f; textAlign = Paint.Align.LEFT; typeface = Typeface.DEFAULT_BOLD
+    }
+
+    private var rows: List<GameUi.Row> = allRows()
+
+    /**
+     * THE LOOT WINDOW'S ROW (r-loot-on-top; the user, batch4: "loot window should be moved to the UI settings"): after the game's
+     * elements, in their words: On = the game keeps its loot window on the top screen, Off = hidden, the pop-up on this screen (the
+     * default). Its value is the Interact add-on's (HomeLootSwitch); null = an older add-on: no row.
+     */
+    private fun lootRow(): GameUi.Row? = HomeLootSwitch.state?.let { s ->
+        GameUi.Row(LOOT_ID, "Loot window", null, if (s.top) UiMode.ON else UiMode.OFF, true, !s.top,
+            if (s.top) "The game's own loot window" else "The loot pop-up on this screen")
+    }
+    /** THE COMPASS BAR'S ROW (live layer part 1): our own bar at the top of the game screen; its value is the add-on's (CompassSwitch) */
+    private fun compassRow(): GameUi.Row? = CompassSwitch.state?.let { s ->
+        GameUi.Row(COMPASS_ID, "Compass bar", null, if (s.show) UiMode.ON else UiMode.OFF, true, !s.show,
+            if (s.show) "Heading, next checkpoint and quest at the top" else "Off")
+    }
+    /** cp7: the compass follows the camera (an experiment), shown while the compass bar is on and the add-on set has it */
+    private fun compassCamRow(): GameUi.Row? = CompassSwitch.state?.takeIf { it.show && it.cam != null && it.camOn >= 0 }?.let { s ->
+        GameUi.Row(COMPASS_CAM_ID, "Compass follows the camera", null, if (s.cam == true) UiMode.ON else UiMode.OFF, true, s.cam != true,
+            if (s.cam == true) "Experiment: while the quest's marker is on screen" else "Off: it follows your character")
+    }
+    /** tt1: "Hide game tooltips" (default off), shown once the add-on set has the switch */
+    private fun tipsRow(): GameUi.Row? = TipsSwitch.state?.let { s ->
+        GameUi.Row(TIPS_ID, "Hide game tooltips", null, if (s.hide) UiMode.ON else UiMode.OFF, true, s.hide,
+            if (s.hide) "Hidden: the game's tooltips are invisible on the top screen" else "Off: the game's tooltips show as usual")
+    }
+    /** at1: "Aggro tint" (default on; ar1's "Aggro rings" switch), shown once the add-on set has it */
+    private fun ringsRow(): GameUi.Row? = RingsSwitch.state?.let { s ->
+        GameUi.Row(RINGS_ID, "Aggro tint", null, if (s.show) UiMode.ON else UiMode.OFF, true, !s.show,
+            if (s.show) "On: hostile nameplates glow yellow, orange, then red as you near their aggro range" else "Off: no tint on the nameplates")
+    }
+    private fun allRows(): List<GameUi.Row> = when (part) {
+        // Top screen: the game's own windows only (the housekeeping pass)
+        Part.GAME_UI -> GameUi.rows() + listOfNotNull(lootRow(), GameUi.playerRow(), GameUi.targetRow(), GameUi.castBarRow(),
+            GameUi.nameplatesRow(), tipsRow())
+        // QOL: three groups, each under its heading (a "#" row); the rows, their ids and taps are the ones Top screen had
+        Part.QOL -> group("HUD", listOfNotNull(GameUi.hudRow(), GameUi.hudHeightRow(), GameUi.hudWidthRow(), GameUi.hudScaleRow())) +
+            group("Navigation", listOfNotNull(compassRow(), GameUi.worldMarkersRow(), compassCamRow(), dangerRow())) +
+            group("Combat", listOfNotNull(ringsRow()))
+        else -> GameUi.rows() + listOfNotNull(GameUi.castBarRow(), GameUi.hudRow(), GameUi.hudHeightRow(), GameUi.hudWidthRow(), GameUi.hudScaleRow(), lootRow(), compassRow(), compassCamRow(), ringsRow(), tipsRow())
+    }
+    /** a heading row ("#" + its words) over [rows], none when the group is empty */
+    private fun group(heading: String, rows: List<GameUi.Row>): List<GameUi.Row> =
+        if (rows.isEmpty()) emptyList() else listOf(GameUi.Row("#$heading", heading, null, UiMode.ON, true, false, "")) + rows
+    /** QOL > Navigation: SafePath's "Avoid dangerous areas" (moved from Home > Map: the same Settings.avoidDanger), Off / Low / High */
+    private fun dangerRow(): GameUi.Row {
+        val safe = Settings.ROUTE_MODES_ON && Settings.questTracking == "safepath"
+        val note = when {
+            !Settings.ROUTE_MODES_ON -> "Comes with SafePath in a later update"
+            Settings.questTracking != "safepath" -> "SafePath only: choose SafePath in Home > Map > Quest tracking"
+            Settings.avoidDanger == "off" -> "The line goes straight, through hostile mobs"
+            Settings.avoidDanger == "low" -> "The line bends round dense or high-level hostile mobs"
+            else -> "The line bends round hostile mobs at or above your level"
+        }
+        return GameUi.Row(DANGER_ID, "Avoid dangerous areas", null, UiMode.ON, safe, false, note)
+    }
+    private var selected: String? = null
+    private val rowBoxes = ArrayList<Pair<RectF, String>>()
+    private val segBoxes = ArrayList<Pair<RectF, UiMode>>()
+    /** hub15 / hub16: the HUD height / width / scale rows' buttons (-1 / default 0 / +1) */
+    private val stepBoxes = ArrayList<Pair<RectF, Pair<String, Int>>>()
+
+    private var downX = 0f
+    private var downY = 0f
+
+    init {
+        GameUi.onChange { post { refresh() } }
+        HomeLootSwitch.onChange { post { refresh() } }
+        CompassSwitch.onChange { post { refresh() } }
+        TipsSwitch.onChange { post { refresh() } }
+        RingsSwitch.onChange { post { refresh() } }
+        if (hasStatus) StatusLine.onChange = { post { invalidate() } }
+    }
+
+    private fun refresh() {
+        val before = rows.size
+        rows = allRows()
+        if (selected != null && rows.none { it.id == selected }) selected = null
+        if (rows.size != before) requestLayout()
+        invalidate()
+    }
+
+    private fun wantedHeight(): Int {
+        val heads = rows.count { it.id.startsWith("#") }
+        var h = (if (hasUi) (if (part == Part.QOL) QOL_TOP else HEAD_H) + (rows.size - heads) * (ROW_H + GAP) + heads * SUBHEAD_H else 0f) +
+            BOTTOM + (if (hasStatus) STATUS_H else 0f)
+        if (hasUi && selected != null) h += BAR_H + GAP
+        return h.toInt()
+    }
+
+    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+        setMeasuredDimension(getDefaultSize(suggestedMinimumWidth, widthSpec),
+                             resolveSize(wantedHeight(), heightSpec))
+    }
+
+    /** the controller's targets (Home's Settings cursor, LATER item 5): every row, then the open bar's three modes, in reading order */
+    fun focusTargets(): List<RectF> {
+        val out = ArrayList<RectF>()
+        for ((box, id) in rowBoxes) {
+            out.add(RectF(box))
+            if (id == selected) { segBoxes.forEach { out.add(RectF(it.first)) }; stepBoxes.forEach { out.add(RectF(it.first)) } }
+        }
+        return out
+    }
+
+    /** B in the Settings room closes an open On / Off / Dynamic bar first; false = nothing was open */
+    fun closeSelection(): Boolean {
+        if (selected == null) return false
+        selected = null; requestLayout(); invalidate()
+        return true
+    }
+
+    /** a bar is open (the next B closes it rather than leaving the room) */
+    val hasSelection get() = selected != null
+
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        when (e.action) {
+            MotionEvent.ACTION_DOWN -> { downX = e.x; downY = e.y }
+            MotionEvent.ACTION_UP -> {
+                if (abs(e.x - downX) > SLOP || abs(e.y - downY) > SLOP) return true
+                for ((box, sd) in stepBoxes) if (box.contains(e.x, e.y)) {
+                    when (sd.first) {
+                        // QOL > Navigation: the same Settings.avoidDanger Home > Map set (SafePath only)
+                        DANGER_ID -> if (Settings.ROUTE_MODES_ON && Settings.questTracking == "safepath")
+                            Settings.avoidDanger = Settings.AVOID_DANGER[sd.second]
+                        GameUi.HUD_W_ID -> GameUi.stepHudWidth(sd.second)
+                        GameUi.HUD_S_ID -> GameUi.stepHudScale(sd.second)
+                        else -> GameUi.stepHudHeight(sd.second)
+                    }
+                    refresh(); return true
+                }
+                for ((box, m) in segBoxes) if (box.contains(e.x, e.y)) {
+                    selected?.let {
+                        when (it) {
+                            LOOT_ID -> HomeLootSwitch.turn(context, m == UiMode.ON)
+                            COMPASS_ID -> CompassSwitch.turn(context, m == UiMode.ON)
+                            COMPASS_CAM_ID -> CompassSwitch.turnCam(context, m == UiMode.ON)
+                            TIPS_ID -> TipsSwitch.turn(context, m == UiMode.ON)
+                            RINGS_ID -> RingsSwitch.turn(context, m == UiMode.ON)
+                            GameUi.CASTBAR_ID -> GameUi.setCastBar(m == UiMode.ON)
+                            GameUi.HUD_ID -> GameUi.setHud(m == UiMode.ON)
+                            GameUi.PLAYER_ID -> GameUi.setSwitch(GameUi.SW_PLAYER, m == UiMode.ON)
+                            GameUi.TARGET_ID -> GameUi.setSwitch(GameUi.SW_TARGET, m == UiMode.ON)
+                            GameUi.NP_ID -> GameUi.setSwitch(GameUi.SW_NP, m == UiMode.ON)
+                            GameUi.WM_ID -> GameUi.setSwitch(GameUi.SW_WM, m == UiMode.ON)
+                            else -> GameUi.setMode(it, m)
+                        }
+                    }
+                    refresh()
+                    return true
+                }
+                for ((box, id) in rowBoxes) if (box.contains(e.x, e.y)) {
+                    selected = if (selected == id) null else id
+                    requestLayout(); invalidate()
+                    return true
+                }
+            }
+        }
+        return true
+    }
+
+    /** the game's type (UI art, fonts step). Set where the paints are USED: the kit can reach the
+     *  device after this view is built, and a paint keeps the font it was given. */
+    private fun fonts() {
+        UiKit.asTitle(pSection); UiKit.asBody(pLabel); UiKit.asBody(pSub)
+        UiKit.asBody(pMode); UiKit.asBody(pSeg)
+    }
+
+    override fun onDraw(c: Canvas) {
+        fonts()
+        c.drawColor(Theme.ink)
+        rowBoxes.clear(); segBoxes.clear(); stepBoxes.clear()
+        var y = 0f
+        if (hasUi) {
+        if (part == Part.QOL) y = QOL_TOP
+        else { c.drawText("Game UI on the top screen", 28f, HEAD_TEXT + 4f, pSection); y = HEAD_H }
+        for (r in rows) {
+            if (r.id.startsWith("#")) {
+                // a QOL group's heading (the page's block headings' look)
+                c.drawText(r.label, 28f, y + SUBHEAD_TEXT, pSection)
+                y += SUBHEAD_H
+                continue
+            }
+            val box = RectF(16f, y, width - 16f, y + ROW_H)
+            val sel = r.id == selected
+            pFill.color = if (sel) Theme.selected else Theme.raised
+            c.drawRoundRect(box, 8f, 8f, pFill)
+            if (sel) {
+                pStroke.color = Theme.bronze; pStroke.strokeWidth = 2f
+                c.drawRoundRect(box, 8f, 8f, pStroke)
+            }
+            pStroke.color = if (r.known) Theme.gold else Theme.dim; pStroke.strokeWidth = 2.4f
+            elementIcon(c, r.id, box.left + 58f, box.centerY(), 1.7f)
+            pLabel.color = if (r.known) Theme.text else Theme.dim
+            c.drawText(r.label, box.left + 116f, box.top + 41f, pLabel)
+            pSub.color = if (r.known) Theme.textDim else Theme.dim
+            c.drawText(r.note, box.left + 116f, box.top + 75f, pSub)
+            pMode.color = if (r.known) Theme.gold else Theme.dim
+            c.drawText(if (r.id == GameUi.HUD_H_ID || r.id == GameUi.HUD_W_ID || r.id == GameUi.HUD_S_ID) GameUi.hudValue(r.id)
+                else if (r.id == DANGER_ID) Settings.avoidDanger.replaceFirstChar { it.uppercase() } else word(r.mode),
+                box.right - 24f, box.centerY() + 10f, pMode)
+            rowBoxes.add(box to r.id)
+            y += ROW_H + GAP
+
+            if (sel) { bar(c, r, y); y += BAR_H + GAP }
+        }
+        }
+        if (!hasStatus) return
+
+        // ---- what the status line under the strip used to say (user, 2026-09-28: it lives here now)
+        y += COMPANION_TOP                 // the page's 90 px seam above a heading (Map's measure 2026-10-06: it was 52)
+        c.drawText("Companion", 28f, y + HEAD_TEXT + 12f, pSection)
+        val box = RectF(16f, y + HEAD_H + 8f, width - 16f, y + HEAD_H + 8f + ROW_H)
+        pFill.color = Theme.raised
+        c.drawRoundRect(box, 8f, 8f, pFill)
+        pLabel.color = Theme.text
+        c.drawText("Status", box.left + 22f, box.top + 41f, pLabel)
+        pSub.color = Theme.textDim
+        val say = StatusLine.text.ifEmpty { "Nothing to report" }
+        val cut = pSub.breakText(say, true, box.width() - 44f, null)
+        c.drawText(if (cut < say.length) say.substring(0, cut) else say, box.left + 22f, box.top + 75f, pSub)
+    }
+
+    /** the ONE contextual control: the selected row's modes (three; the minimap's four with "While tracking", LATER 25) */
+    private fun bar(c: Canvas, r: GameUi.Row, top: Float) {
+        val left = 16f; val right = width - 16f
+        val gap = 10f
+        if (r.id == DANGER_ID) {
+            // Off / Low / High, the chosen one lit (greyed outside SafePath)
+            val sw = (right - left - 2f * gap) / 3f
+            val sel = Settings.AVOID_DANGER.indexOf(Settings.avoidDanger)
+            for ((k, w) in listOf("Off", "Low", "High").withIndex()) {
+                val b = RectF(left + k * (sw + gap), top, left + k * (sw + gap) + sw, top + SEG_H)
+                UiKit.choice(c, b, w, k == sel, enabled = r.known)
+                stepBoxes.add(b to (DANGER_ID to k))
+            }
+            pSub.color = Theme.textDim
+            c.drawText("How hard SafePath's line bends round hostile mobs.", left + 6f, top + SEG_H + 34f, pSub)
+            return
+        }
+        if (r.id == GameUi.HUD_H_ID || r.id == GameUi.HUD_W_ID || r.id == GameUi.HUD_S_ID) {
+            // hub15 / hub16: one step each way and the default (the game's red buttons); the value shown on the row, the bar redrawn live
+            val (words, hint) = when (r.id) {
+                GameUi.HUD_W_ID -> listOf("Narrower", "Default", "Wider") to "How wide HUD mode's own bar is, for this character."
+                GameUi.HUD_S_ID -> listOf("Smaller", "Default", "Larger") to "How large HUD mode's own bar is drawn, for this character."
+                else -> listOf("Lower", "Default", "Higher") to "Where HUD mode's own bar sits under your character, for this character."
+            }
+            val sw = (right - left - 2f * gap) / 3f
+            for ((k, d) in listOf(-1, 0, 1).withIndex()) {
+                val b = RectF(left + k * (sw + gap), top, left + k * (sw + gap) + sw, top + SEG_H)
+                UiKit.choice(c, b, words[k], false)
+                stepBoxes.add(b to (r.id to d))
+            }
+            pSub.color = Theme.textDim
+            c.drawText(hint, left + 6f, top + SEG_H + 34f, pSub)
+            return
+        }
+        val modes = if (r.id == LOOT_ID || r.id == COMPASS_ID || r.id == COMPASS_CAM_ID || r.id == TIPS_ID || r.id == RINGS_ID || r.id == GameUi.CASTBAR_ID || r.id == GameUi.HUD_ID ||
+            r.id == GameUi.PLAYER_ID || r.id == GameUi.TARGET_ID || r.id == GameUi.NP_ID || r.id == GameUi.WM_ID) listOf(UiMode.ON, UiMode.OFF) else UiElements.modesFor(r.id)
+        val sw = (right - left - gap * (modes.size - 1)) / modes.size
+        var x = left
+        for (m in modes) {
+            val b = RectF(x, top, x + sw, top + SEG_H)
+            val on = r.mode == m
+            // one of three: the game's red button, the chosen one lit; the word and its sign are drawn over it
+            UiKit.choice(c, b, "", on)
+            val col = if (on) Theme.gold else Theme.textDim
+            pSeg.color = col
+            val tw = pSeg.measureText(word(m))
+            val total = 44f + 14f + tw
+            val ix = b.centerX() - total / 2f + 22f
+            pStroke.color = col; pStroke.strokeWidth = 2.4f
+            modeIcon(c, m, ix, b.centerY())
+            c.drawText(word(m), ix + 22f + 14f, b.centerY() + 10f, pSeg)
+            segBoxes.add(b to m)
+            x += sw + gap
+        }
+        pSub.color = Theme.textDim
+        c.drawText(explain(r), left + 6f, top + SEG_H + 34f, pSub)
+    }
+
+    private fun word(m: UiMode) = when (m) {
+        UiMode.ON -> "On"; UiMode.OFF -> "Off"; UiMode.DYNAMIC -> "Dynamic"; UiMode.TRACKING -> "Tracking"
+    }
+
+    private fun explain(r: GameUi.Row): String {
+        if (r.id == LOOT_ID) return if (r.mode == UiMode.ON) "The game's own loot window opens on the top screen, as usual."
+            else "Hidden: the loot pop-up opens on this screen."
+        if (r.id == COMPASS_CAM_ID) return if (r.mode == UiMode.ON)
+            "An experiment: while the focused quest's or the route's marker is on the screen, the compass turns with the camera; " +
+            "otherwise it keeps the last angle and settles back to your character as you move."
+            else "The compass turns with your character."
+        if (r.id == COMPASS_ID) return if (r.mode == UiMode.ON)
+            "A compass along the top of the game screen: your heading, the next checkpoint, the focused quest and your corpse, with distances."
+            else "No compass bar on the top screen."
+        if (r.id == GameUi.HUD_ID) return if (r.mode == UiMode.ON)
+            "The resource bar under your character: health, power, buffs and debuffs. For this character."
+            else "No resource bar under your character."
+        if (r.id == GameUi.WM_ID) return if (r.mode == UiMode.ON) "Markers stand in the 3D world on the next checkpoint and the quest. For this character."
+            else "No markers in the 3D world; the compass bar still shows them. For this character."
+        if (r.id == GameUi.PLAYER_ID) return if (r.mode == UiMode.ON) "The game's player frame stays on the top screen. For this character."
+            else "The game's player frame (and its pet frame) is hidden. For this character."
+        if (r.id == GameUi.TARGET_ID) return if (r.mode == UiMode.ON) "The game's target frame stays on the top screen. For this character."
+            else "The game's target frame (and the target's target) is hidden. For this character."
+        if (r.id == GameUi.NP_ID) return if (r.mode == UiMode.ON) "The bars over hostile mobs are on. Off gives the game's own setting back."
+            else "The game's own nameplate setting, as you had it."
+        if (r.id == GameUi.CASTBAR_ID) return if (r.mode == UiMode.ON) "The game's own cast bar stays on the top screen."
+            else "Hidden while the companion is on this screen; Home's bar shows every cast."
+        val room = r.home?.label?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "its"
+        return when (r.mode) {
+            UiMode.ON -> "The game keeps it on the top screen."
+            UiMode.OFF -> "Hidden while the companion is on this screen."
+            UiMode.DYNAMIC -> if (UiElements.of(r.id)?.onHome == true)
+                "Hidden only while the $room room or Home is showing." else "Hidden only while the $room room is showing."
+            UiMode.TRACKING -> "Shown while Find Herbs, Minerals or Treasure is on."
+        }
+    }
+
+    // ------------------------------------------------------------------ glyphs
+
+    /** the home room's glyph, on Strip's 24-unit grid, so an element reads as its room */
+    private fun elementIcon(c: Canvas, id: String, cx: Float, cy: Float, s: Float) {
+        fun X(v: Float) = cx + (v - 12f) * s
+        fun Y(v: Float) = cy + (v - 12f) * s
+        val p = pStroke
+        when (id) {
+            "minimap" -> {
+                c.drawCircle(cx, cy, 10f * s, p)
+                c.drawPath(Path().apply {
+                    moveTo(X(15.4f), Y(8.6f)); lineTo(X(13.3f), Y(13.4f))
+                    lineTo(X(8.5f), Y(15.5f)); lineTo(X(10.6f), Y(10.7f)); close()
+                }, p)
+            }
+            "hud" -> c.drawPath(Path().apply {
+                moveTo(X(13f), Y(2f)); lineTo(X(5f), Y(13f)); lineTo(X(10f), Y(13f))
+                lineTo(X(9f), Y(22f)); lineTo(X(17f), Y(11f)); lineTo(X(12f), Y(11f)); close()
+            }, p)
+            "tracker" -> {
+                c.drawPath(Path().apply {
+                    moveTo(X(10f), Y(3f)); lineTo(X(14f), Y(3f)); lineTo(X(13f), Y(15f))
+                    lineTo(X(11f), Y(15f)); close()
+                }, p)
+                c.drawCircle(X(12f), Y(19.5f), 1.9f * s, p)
+            }
+            "chat" -> c.drawPath(Path().apply {
+                moveTo(X(20f), Y(11.5f))
+                cubicTo(X(20f), Y(16f), X(16.5f), Y(18.5f), X(13f), Y(18.5f))
+                lineTo(X(8.5f), Y(18.5f)); lineTo(X(4.5f), Y(21f)); lineTo(X(4.5f), Y(17.4f))
+                cubicTo(X(2f), Y(15f), X(3f), Y(4.5f), X(8f), Y(4.5f))
+                lineTo(X(13f), Y(4.5f)); cubicTo(X(17.5f), Y(4.5f), X(20f), Y(7f), X(20f), Y(11.5f))
+                close()
+            }, p)
+            // the game's cast bar: a long bar, two thirds filled
+            GameUi.CASTBAR_ID -> {
+                c.drawRoundRect(RectF(X(2f), Y(9f), X(22f), Y(15f)), 3f, 3f, p)
+                pFill.color = p.color
+                c.drawRoundRect(RectF(X(3.5f), Y(10.5f), X(15f), Y(13.5f)), 1.5f, 1.5f, pFill)
+            }
+            // HUD width: a left / right arrow pair
+            GameUi.HUD_W_ID -> {
+                c.drawLine(X(3f), Y(12f), X(21f), Y(12f), p)
+                c.drawLine(X(7f), Y(8f), X(3f), Y(12f), p); c.drawLine(X(7f), Y(16f), X(3f), Y(12f), p)
+                c.drawLine(X(17f), Y(8f), X(21f), Y(12f), p); c.drawLine(X(17f), Y(16f), X(21f), Y(12f), p)
+            }
+            // HUD scale: a small box inside a large one, a diagonal arrow
+            GameUi.HUD_S_ID -> {
+                c.drawRoundRect(RectF(X(3f), Y(3f), X(21f), Y(21f)), 2.5f, 2.5f, p)
+                c.drawRoundRect(RectF(X(5.5f), Y(13f), X(11f), Y(18.5f)), 1.5f, 1.5f, p)
+                c.drawLine(X(12f), Y(12f), X(18f), Y(6f), p)
+                c.drawLine(X(14f), Y(6f), X(18f), Y(6f), p); c.drawLine(X(18f), Y(10f), X(18f), Y(6f), p)
+            }
+            // HUD height: an up / down arrow pair
+            GameUi.HUD_H_ID -> {
+                c.drawLine(X(12f), Y(3f), X(12f), Y(21f), p)
+                c.drawLine(X(8f), Y(7f), X(12f), Y(3f), p); c.drawLine(X(16f), Y(7f), X(12f), Y(3f), p)
+                c.drawLine(X(8f), Y(17f), X(12f), Y(21f), p); c.drawLine(X(16f), Y(17f), X(12f), Y(21f), p)
+            }
+            // HUD mode: a portrait frame crossed out
+            GameUi.HUD_ID -> {
+                c.drawRoundRect(RectF(X(3f), Y(6f), X(21f), Y(18f)), 3f, 3f, p)
+                c.drawCircle(X(8.5f), Y(12f), 3f * s, p)
+                c.drawLine(X(13f), Y(10f), X(19f), Y(10f), p); c.drawLine(X(13f), Y(14f), X(17f), Y(14f), p)
+            }
+            // the compass bar: a ring and its needle
+            COMPASS_ID, COMPASS_CAM_ID -> {
+                c.drawCircle(X(12f), Y(12f), 8.5f * s, p)
+                c.drawLine(X(12f), Y(6f), X(14f), Y(12f), p); c.drawLine(X(14f), Y(12f), X(12f), Y(18f), p)
+                c.drawLine(X(12f), Y(18f), X(10f), Y(12f), p); c.drawLine(X(10f), Y(12f), X(12f), Y(6f), p)
+            }
+            // the loot window: a small chest, its lid line and clasp
+            LOOT_ID -> {
+                c.drawRoundRect(RectF(X(3f), Y(7f), X(21f), Y(19f)), 2.5f, 2.5f, p)
+                c.drawLine(X(3f), Y(11.5f), X(21f), Y(11.5f), p)
+                c.drawRect(RectF(X(10.5f), Y(10f), X(13.5f), Y(14f)), p)
+            }
+            else -> c.drawRoundRect(RectF(X(4f), Y(6f), X(20f), Y(18f)), 3f, 3f, p)
+        }
+    }
+
+    /** On = an eye, Off = the eye struck through, Dynamic = the two screens, the lower one lit, Tracking = the eye with a small leaf */
+    private fun modeIcon(c: Canvas, m: UiMode, cx: Float, cy: Float) {
+        val s = 1.6f
+        fun X(v: Float) = cx + (v - 12f) * s
+        fun Y(v: Float) = cy + (v - 12f) * s
+        val p = pStroke
+        when (m) {
+            UiMode.ON, UiMode.OFF -> {
+                c.drawPath(Path().apply {
+                    moveTo(X(2f), Y(12f))
+                    cubicTo(X(6f), Y(5f), X(18f), Y(5f), X(22f), Y(12f))
+                    cubicTo(X(18f), Y(19f), X(6f), Y(19f), X(2f), Y(12f)); close()
+                }, p)
+                c.drawCircle(cx, cy, 3.2f * s, p)
+                if (m == UiMode.OFF) c.drawLine(X(4f), Y(20f), X(20f), Y(4f), p)
+            }
+            UiMode.TRACKING -> {
+                c.drawPath(Path().apply {
+                    moveTo(X(2f), Y(12f))
+                    cubicTo(X(6f), Y(5f), X(18f), Y(5f), X(22f), Y(12f))
+                    cubicTo(X(18f), Y(19f), X(6f), Y(19f), X(2f), Y(12f)); close()
+                }, p)
+                // the herb: a small leaf where the pupil was (the game's Find Herbs reads as a leaf)
+                c.drawPath(Path().apply {
+                    moveTo(X(9f), Y(15f)); cubicTo(X(9f), Y(9f), X(13f), Y(8f), X(16f), Y(8f))
+                    cubicTo(X(16f), Y(12f), X(14f), Y(15f), X(9f), Y(15f)); close()
+                }, p)
+            }
+            UiMode.DYNAMIC -> {
+                c.drawRoundRect(RectF(X(3f), Y(3f), X(21f), Y(11f)), 2f, 2f, p)
+                val lower = RectF(X(5f), Y(14f), X(19f), Y(21f))
+                c.drawRoundRect(lower, 2f, 2f, p)
+                pFill.color = p.color
+                c.drawRoundRect(RectF(lower.left + 5f, lower.top + 4f, lower.right - 5f, lower.bottom - 4f),
+                                1f, 1f, pFill)
+            }
+        }
+    }
+
+    companion object {
+        /** the loot window's row: no hub element, the Interact add-on's own switch */
+        const val LOOT_ID = "loot"
+        /** the compass bar's row: our own bar (Trail.lua), the add-on's own switch */
+        const val COMPASS_ID = "compass"
+        /** cp7: the compass's camera experiment */
+        const val COMPASS_CAM_ID = "compasscam"
+        const val TIPS_ID = "hidetips"
+        /** QOL > Navigation: Avoid dangerous areas (Settings.avoidDanger) */
+        const val DANGER_ID = "avoiddanger"
+        /** QOL: the page's top before its first group, a group heading's height and its text's baseline */
+        const val QOL_TOP = 20f
+        const val SUBHEAD_H = 64f
+        const val SUBHEAD_TEXT = 44f
+        const val RINGS_ID = "aggrorings"
+        // SettingsView's own metrics: a section heading 16 px above its first row, 96 px rows
+        const val HEAD_TEXT = 26f
+        const val HEAD_H = 42f
+        const val ROW_H = 96f
+        const val GAP = 10f
+        const val SEG_H = 110f       // 48 dp on this panel: the touch floor
+        const val BAR_H = SEG_H + 50f
+        const val BOTTOM = 16f
+        const val COMPANION_TOP = 38f
+        const val STATUS_H = COMPANION_TOP + HEAD_H + 8f + ROW_H + 8f     // the "Companion" heading and its one row
+        const val SLOP = 24f
+    }
+}

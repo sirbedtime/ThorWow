@@ -1,0 +1,269 @@
+{
+ "tag": "feralas",
+ "dir": "kalimdor",
+ "faction": "horde",
+ "zone": 1444,
+ "area": 357,
+ "level": 45,
+ "friendlyMinLevel": 100,
+ "maps": [
+  [
+   1444,
+   357
+  ],
+  [
+   1443,
+   405
+  ],
+  [
+   1441,
+   400
+  ],
+  [
+   2652,
+   16651
+  ]
+ ],
+ "cities": [],
+ "border": [
+  1444,
+  1443
+ ],
+ "title": "Feralas",
+ "crop": [
+  -2367,
+  -7000,
+  3600,
+  -1508
+ ],
+ "decksByHeight": true,
+ "closeups": [
+  {
+   "name": "Camp Mojache",
+   "box": [
+    -4150,
+    -4650,
+    450,
+    -50
+   ]
+  },
+  {
+   "name": "Verdantis bridge",
+   "box": [
+    -4600,
+    -4900,
+    1150,
+    850
+   ]
+  },
+  {
+   "name": "Dire Maul",
+   "box": [
+    -3450,
+    -4600,
+    1850,
+    800
+   ]
+  },
+  {
+   "name": "Desolace road",
+   "box": [
+    -2367,
+    -2750,
+    2600,
+    2100
+   ]
+  },
+  {
+   "name": "Woodpaw Den",
+   "box": [
+    -4650,
+    -5000,
+    1050,
+    700
+   ]
+  },
+  {
+   "name": "Grimtotem Compound",
+   "box": [
+    -4050,
+    -4650,
+    950,
+    550
+   ]
+  },
+  {
+   "name": "Eldreth Row and the courtyard",
+   "box": [
+    -3550,
+    -4150,
+    1450,
+    800
+   ]
+  }
+ ],
+ "goals": [
+  {
+   "name": "the Grimtotem Compound's shamans",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "mob": "Grimtotem Shaman",
+    "near": [
+     -4515,
+     790
+    ]
+   }
+  },
+  {
+   "name": "the Woodpaw gnolls' camp in the Woodpaw Hills",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "mob": "Woodpaw Brute",
+    "near": [
+     -4770,
+     545
+    ]
+   }
+  },
+  {
+   "name": "the giant moonwell before Dire Maul (the Dire Maul ruins)",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "cave": 112873,
+    "near": [
+     -4462,
+     1403
+    ]
+   }
+  },
+  {
+   "name": "the Lower Wilds' bears",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "camp": "Lower Wilds"
+   }
+  },
+  {
+   "name": "the way to Thousand Needles",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "xy": [
+     -4162,
+     -850
+    ]
+   }
+  },
+  {
+   "name": "the Writhing Deep",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "camp": "The Writhing Deep"
+   }
+  },
+  {
+   "name": "Frayfeather Highlands' hippogryphs",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "camp": "Frayfeather Highlands"
+   }
+  },
+  {
+   "name": "the Ruins of Isildien's great ruin (the Gordunni ogres)",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "cave": 112694,
+    "near": [
+     -5731,
+     1183
+    ]
+   }
+  },
+  {
+   "name": "the Twin Colossals' zapped giants",
+   "from": {
+    "node": "Camp Mojache"
+   },
+   "to": {
+    "camp": "The Twin Colossals"
+   }
+  },
+  {
+   "name": "the way to Desolace (the road north, at the zone's edge)",
+   "from": {
+    "node": "Ruins of Ravenwind"
+   },
+   "to": {
+    "xy": [
+     -2390,
+     2378
+    ]
+   }
+  }
+ ],
+ "floorWmos": [
+  7952258,
+  109273
+ ],
+ "floorCity": {
+  "fids": [
+   7952258
+  ],
+  "places": [
+   {
+    "name": "Outer ramp foot by the giant moonwell",
+    "xy": [
+     -4434.9,
+     1347.4
+    ],
+    "z": 126.0,
+    "source": "WMO 7952258 (Dire Maul exterior, WMO 21065) group 5 (outdoor): its floor meets the terrain here (floor 126.0, terrain 125.9), 45 yd from route C's goal (the moonwell's mouth, -4464,1386)"
+   },
+   {
+    "name": "Eldreth Row (the south hallway)",
+    "group": 0,
+    "source": "WMO 21065 group 0 = WMOAreaTable 'Eldreth Row' (wmoGroupId 83930): its main floor, z 160-162"
+   },
+   {
+    "name": "Central courtyard (Eldreth Row's north ramp foot)",
+    "xy": [
+     -3936.2,
+     1108.2
+    ],
+    "z": 149.6,
+    "source": "WMO 21065 group 27 ('Eldre'Thalas', outdoor): the foot of Eldreth Row's north ramp (a 40 yd wide quad, 161.1 -> 149.6) on the courtyard's terrain ring (151.4); the ring (87k sq yd, terrain 150-152) holds group 27's courtyard walkway mouths (-3689,1177), (-3693,1005), (-3632,1174) - reach.py from (-3920,1100)"
+   }
+  ],
+  "links": [],
+  "routes": [
+   {
+    "name": "the moonwell to Dire Maul's central courtyard through Eldreth Row",
+    "from": "Outer ramp foot by the giant moonwell",
+    "to": "Central courtyard (Eldreth Row's north ramp foot)"
+   }
+  ],
+  "checks": [
+   {
+    "name": "Eldreth Row from the moonwell",
+    "from": "Outer ramp foot by the giant moonwell",
+    "to": "Eldreth Row (the south hallway)"
+   }
+  ]
+ },
+ "notes": "Dire Maul's central courtyard (recheck2): the lattice cannot route it. Eldreth Row's floor (WMO 7952258's piece 0) runs from the outer ramp by the moonwell (126) up to the hall (161) and down its north ramp onto the courtyard's terrain ring, but the ramp is one quad whose foot vertices lie 1.7-2.1 yd under the terrain (MOUTH_YD 1.5: no mouth, no cave way), and a lattice route there drops 79 yd off the west rampart (a floor at 230-235 levels the column under it). So the courtyard is walked as route C (Camp Mojache -> the moonwell) + the floorCity route K on the WMO's own floor. floorCity takes 7952258 off the caves list (its ways are walked as the floor instead)."
+}
