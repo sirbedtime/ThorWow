@@ -135,7 +135,7 @@ def main():
         raise ValueError("Frozen APK output must be outside the source checkouts")
     components = verified_components(launcher)
     verify_addon_manifest(companion)
-    wanted = {"WC_KEYSTORE", "WC_KEYSTORE_PASS", "WC_KEY_ALIAS", "WC_KEY_PASS"}
+    wanted = {"THORWOW_KEYSTORE", "THORWOW_KEYSTORE_PASS", "THORWOW_KEY_ALIAS", "THORWOW_KEY_PASS", "THORWOW_CERT_SHA256"}
     settings = {key: os.environ[key] for key in wanted if os.environ.get(key)}
     if settings.keys() != wanted:
         raise ValueError("Missing signing setting names: " + ", ".join(sorted(wanted - settings.keys())))
@@ -169,7 +169,7 @@ def main():
     candidates = list((launcher / "app/build/outputs/apk/modern/release").glob("*.apk"))
     if len(candidates) != 1:
         raise ValueError("Expected one signed modern release APK")
-    apk = out / ('DS-Forever-' + token + '.apk')
+    apk = out / ('ThorWoW-' + token + '.apk')
     shutil.copy2(candidates[0], apk)
     with zipfile.ZipFile(apk) as archive:
         verify_packaged_components(archive, components)
@@ -196,7 +196,7 @@ def main():
             print("RELEASE CALLBACK GATE FAILED; inspect", gate_log)
             return result.returncode
     badging = subprocess.run([str(aapt), 'dump', 'badging', str(apk)], capture_output=True, text=True, check=True).stdout
-    if not re.search("package: name='app.dsforever.companion' versionCode='%d' versionName='%s'" % (code, re.escape(token)), badging):
+    if not re.search("package: name='com.sirbedtime.thorwow' versionCode='%d' versionName='%s'" % (code, re.escape(token)), badging):
         raise ValueError('Unexpected package or public version')
     (out / 'badging.txt').write_text(badging, encoding='utf-8')
     signer = sdk / 'build-tools/36.1.0/apksigner.bat'
@@ -204,8 +204,12 @@ def main():
                                capture_output=True, text=True)
     if signature.returncode:
         raise ValueError("APK signature verification failed")
-    if 'fe226869c3395defedb317eeb6cf6646ea96030d820f3e9f0dee8a3ee4c41947' not in signature.stdout:
-        raise ValueError('APK signing identity is not the approved DS certificate')
+    expected_cert = re.sub(r"[^0-9a-fA-F]", "", settings["THORWOW_CERT_SHA256"]).lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", expected_cert):
+        raise ValueError("THORWOW_CERT_SHA256 must be a 64-character SHA-256 fingerprint")
+    actual_cert_text = re.sub(r"[^0-9a-f]", "", signature.stdout.lower())
+    if expected_cert not in actual_cert_text:
+        raise ValueError("APK signing identity does not match THORWOW_CERT_SHA256")
     (out / (apk.stem + "-signature.txt")).write_text(signature.stdout, encoding="utf-8")
     with apk.open("rb") as stream:
         md5 = hashlib.md5()
@@ -217,7 +221,7 @@ def main():
               "signature_verified": True, "bundled_components": components,
               "apk_jni_callbacks": "PASS", "apk_callback_audit": "PASS",
               "sha256": hashlib.sha256(apk.read_bytes()).hexdigest(),
-              "versionName": token, "versionCode": code, "release_repo":"Jreese702/DS-Forever",
+              "versionName": token, "versionCode": code, "release_repo":"sirbedtime/ThorWow",
               "status": "local release-prep artifact; not installed or published"}
     (out / 'SHA256SUMS').write_text(report['sha256'] + '  ' + apk.name + '\n', encoding='ascii')
     (out / (apk.stem + ".json")).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
