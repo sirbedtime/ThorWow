@@ -1,0 +1,52 @@
+name: ThorWoW Android validation
+
+on:
+  push:
+    branches:
+      - thorwow/identity-audit
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK components
+        shell: pwsh
+        run: sdkmanager "platforms;android-36" "build-tools;36.1.0" "ndk;27.2.12479018"
+
+      - name: Fetch and build pinned native dependencies
+        shell: pwsh
+        run: ./tools/bootstrap.ps1
+
+      - name: Run unit tests and assemble ThorWoW debug APK
+        shell: pwsh
+        run: ./gradlew.bat --no-daemon :dsforever:testDebugUnitTest :app:testModernDebugUnitTest :app:assembleModernDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThorWoW-modern-debug
+          path: app/build/outputs/apk/modern/debug/*.apk
+          if-no-files-found: error
