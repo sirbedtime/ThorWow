@@ -22,7 +22,7 @@ object CompanionSetup {
         GAMENATIVE("gn", "app.gamenative", "GameNative"),
         WOWFOREVER("wf", "app.wowforever", "WoW Forever"),
         /** the private fork (the user 2026-10-08: "Teach DS Forever the fork's app name" (a)) */
-        DSLAUNCHER("dl", "app.dsforever.launcher", "DS Forever Launcher"),
+        DSLAUNCHER("dl", "com.sirbedtime.thorwow", "ThorWoW Launcher"),
     }
 
     /** what `companion_setup.sh check` reported for one game */
