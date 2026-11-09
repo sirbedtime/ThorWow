@@ -32,9 +32,9 @@ class ReportNotice(c: Context) : View(c) {
         fun card(s: State): Card = when (s) {
             State.Compiling -> Card("Compiling your report…", "You can keep playing.", emptyList())
             State.Sending -> Card("Sending your report…", "You can keep playing.", emptyList())
-            is State.Sent -> Card("Report sent: issue #${s.number}", "Thank you. The DS Forever team can see it now.", listOf(OK))
-            is State.SendFailed -> Card("Couldn't send the report", "${s.why}. Saved to Documents/DS Forever/reports.", listOf(OPEN, OK))
-            is State.Ready -> Card("Report ready", "Saved in Documents/DS Forever/reports. Open the GitHub issue to post it.", listOf(OPEN, OK))
+            is State.Sent -> Card("Report sent: issue #${s.number}", "Thank you. The ThorWoW project can see it now.", listOf(OK))
+            is State.SendFailed -> Card("Couldn't send the report", "${s.why}. Saved to Documents/ThorWoW/reports.", listOf(OPEN, OK))
+            is State.Ready -> Card("Report ready", "Saved in Documents/ThorWoW/reports. Open the GitHub issue to post it.", listOf(OPEN, OK))
             is State.Failed -> Card("Couldn't save the report", s.why, listOf(OK))
         }
     }
