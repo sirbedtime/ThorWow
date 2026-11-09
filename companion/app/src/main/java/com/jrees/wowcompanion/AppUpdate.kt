@@ -9,7 +9,7 @@ import java.net.URL
 import java.util.zip.ZipFile
 
 /**
- * DS FOREVER'S OWN UPDATE (the user's rulings 2026-10-12, Track C): at startup, never blocking, read the PUBLIC release repo's latest
+ * THORWOW'S OWN UPDATE (the user's rulings 2026-10-12, Track C): at startup, never blocking, read the PUBLIC release repo's latest
  * GitHub release (no token, ever; a plain User-Agent), and on the player's press download the APK into the private cache for Android's
  * installer. Pure (java.net + org.json): the launcher's AppUpdater adds what only Android can do - the signing certificate check against
  * our own install, the archive's versionCode, the installer, the "Install unknown apps" screen.
@@ -19,8 +19,8 @@ import java.util.zip.ZipFile
  * retries once inside a [DEADLINE_MS] overall deadline; at most ONE cached APK is kept, and a failed one is deleted.
  */
 object AppUpdate {
-    /** the release asset: "DS-Forever-<version>.apk" (e.g. DS-Forever-1.0.3.apk); nothing else is ever downloaded */
-    val ASSET = Regex("""^DS-Forever-v?(\d+(?:\.\d+){0,3})\.apk$""")
+    /** the release asset: "ThorWoW-<version>.apk" (e.g. ThorWoW-1.0.3.apk); nothing else is ever downloaded */
+    val ASSET = Regex("""^ThorWoW-v?(\d+(?:\.\d+){0,3})\.apk$""")
     const val DEADLINE_MS = 10 * 60_000L
     private const val MAX_APK = 600L * 1024 * 1024
 
@@ -44,8 +44,8 @@ object AppUpdate {
         data class Skipped(val why: String) : Check()
     }
 
-    /** the one-line top-screen check: "DS Forever <ver>: up to date / update <ver> available / skipped (<why>)" */
-    fun line(current: String, c: Check?): String = "DS Forever $current: " + when (c) {
+    /** the one-line top-screen check: "ThorWoW <ver>: up to date / update <ver> available / skipped (<why>)" */
+    fun line(current: String, c: Check?): String = "ThorWoW $current: " + when (c) {
         null -> "checking for updates"
         is Check.UpToDate -> "up to date"
         is Check.Available -> "update ${c.release.version} available"
