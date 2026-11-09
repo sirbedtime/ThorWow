@@ -13,8 +13,8 @@ object HomeRoot {
     enum class State { OK, REFUSED, ASKING }
 
     const val WAIT_MS = 2_500L
-    const val REFUSED_LINE = "Root is refused. Open Magisk > Superuser and turn on DS Forever."
-    const val ASKING_LINE = "Allow DS Forever in Magisk's root prompt."
+    const val REFUSED_LINE = "Root is refused. Open Magisk > Superuser and turn on ThorWoW."
+    const val ASKING_LINE = "Allow ThorWoW in Magisk's root prompt."
 
     private val worker = Executors.newSingleThreadExecutor()
     @Volatile private var pending: Process? = null
