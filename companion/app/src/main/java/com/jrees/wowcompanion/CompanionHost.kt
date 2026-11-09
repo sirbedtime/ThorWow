@@ -2044,7 +2044,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
             }
             // Spells' m41 S1: the clean-up's plan for this character (the Controller room's DS tab; AGENT_LOG 2026-10-09); a state, so a
             // replayed one counts too (the last one wins)
-            // the add-on's own saved tables (PadMap m51): kept in Documents/DS Forever for the write before the next game start
+            // the add-on's own saved tables (PadMap m51): kept in Documents/ThorWoW for the write before the next game start
             "svkeep" -> if (current) SvKeep.parse(msg, System.currentTimeMillis())?.let { d ->
                 if (LauncherHooks.gameStartSec != svRun) { svRun = LauncherHooks.gameStartSec; svArmed.clear(); svSeen.clear() }
                 if (svSeen.add(d.variable) && d.n > 0) svArmed += d.variable
@@ -2688,7 +2688,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
 
     /**
      * THE KEY SWEEP'S TRIGGER (Quests' pad10c probe; the user: "the sweep only on your word"): ONE broadcast from the PC, sent only when
-     * tracking relays the user's "sweep" - `adb shell am broadcast -a com.sirbedtime.thorwow.KEYSWEEP -p app.dsforever.companion`.
+     * tracking relays the user's "sweep" - `adb shell am broadcast -a com.sirbedtime.thorwow.KEYSWEEP -p com.sirbedtime.thorwow`.
      * The sweep presses only Quests' test keys (CTRL-SHIFT row keys alone, the keytest row's columns), which do nothing in the game;
      * live keys stay off (TapBridge.KEYS_ON). Registered once per app life, inside the launcher only.
      */
@@ -2963,7 +2963,7 @@ class CompanionHost(base: Context, private val shell: HostShell) : ContextWrappe
         if (d.name.isNullOrEmpty()) null else "choice_${d.name}-${d.realm ?: ""}"
 
     /**
-     * ONCE PER CHARACTER, after the first login (the user's pick): "Use DS Forever D-pad controls?". A game whose add-on already has the
+     * ONCE PER CHARACTER, after the first login (the user's pick): "Use ThorWoW D-pad controls?". A game whose add-on already has the
      * answer is followed (and the app remembers it); a game whose add-on has none gets the app's remembered choice, silently, once a
      * run (the user answered in the other game); only a character never asked anywhere sees the prompt. Never over a fight, the
      * setup's prompt or the start screen.
