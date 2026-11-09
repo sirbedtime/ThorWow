@@ -26,14 +26,14 @@ android {
     ndkVersion = "27.2.12479018"
 
     signingConfigs {
-        // the DS Forever key: WC_KEYSTORE / WC_KEYSTORE_PASS / WC_KEY_ALIAS / WC_KEY_PASS from the environment (the user's own
-        // Gradle properties, handed over by the build wrapper). Never in this repo. Without them the build is debug-signed.
-        create("dsforever") {
-            System.getenv("WC_KEYSTORE")?.let { ks ->
+        // ThorWoW release signing is deliberately separate from DS Forever. Keep the private key outside the repository.
+        // Without THORWOW_KEYSTORE the debug build uses Android's debug key.
+        create("thorwow") {
+            System.getenv("THORWOW_KEYSTORE")?.let { ks ->
                 storeFile = file(ks)
-                storePassword = System.getenv("WC_KEYSTORE_PASS")
-                keyAlias = System.getenv("WC_KEY_ALIAS")
-                keyPassword = System.getenv("WC_KEY_PASS")
+                storePassword = System.getenv("THORWOW_KEYSTORE_PASS")
+                keyAlias = System.getenv("THORWOW_KEY_ALIAS")
+                keyPassword = System.getenv("THORWOW_KEY_PASS")
             }
         }
         create("release") {
@@ -47,21 +47,20 @@ android {
     }
 
     defaultConfig {
-        // DS Forever (S5, the user 2026-10-08: "(a) Become 'DS Forever'"): THE one app, installed over the old DS Forever app
-        applicationId = "app.dsforever.companion"
+        // ThorWoW has its own package so it can coexist with DS Forever and other launchers.
+        applicationId = "com.sirbedtime.thorwow"
 
         minSdk = 26
 
         manifestPlaceholders["screenOrientation"] = "unspecified"
         buildConfigField("boolean", "XR_BUILD", "false")
 
-        versionCode = 1210
-        versionName = "1.0.12"
+        versionCode = 1
+        versionName = "0.1.0"
 
         buildConfigField("boolean", "GOLD", "false")
-        // DS Forever's self-update (Track C, the user's rulings 2026-10-12): the PUBLIC release repo "owner/repo" whose latest GitHub
-        // release carries DS-Forever-<version>.apk. Empty = no repo yet: the update check says so and does nothing. No token, ever.
-        buildConfigField("String", "DSF_RELEASE_REPO", "\"Jreese702/DS-Forever\"")
+        // ThorWoW updates are read only from this repository. No token or private credentials are used.
+        buildConfigField("String", "THORWOW_RELEASE_REPO", "\"sirbedtime/ThorWow\"")
         val iconValue = "@mipmap/ic_launcher"
         val iconRoundValue = "@mipmap/ic_launcher_round"
         manifestPlaceholders.putAll(
@@ -124,12 +123,12 @@ android {
             isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName(if (System.getenv("WC_KEYSTORE") != null) "dsforever" else "debug")
+            signingConfig = signingConfigs.getByName(if (System.getenv("THORWOW_KEYSTORE") != null) "thorwow" else "debug")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("dsforever")
+            signingConfig = signingConfigs.getByName("thorwow")
         }
     }
 
@@ -195,9 +194,9 @@ android {
 tasks.configureEach {
     if (name == "preModernReleaseBuild") {
         doFirst {
-            require(listOf("WC_KEYSTORE", "WC_KEYSTORE_PASS", "WC_KEY_ALIAS", "WC_KEY_PASS").all {
+            require(listOf("THORWOW_KEYSTORE", "THORWOW_KEYSTORE_PASS", "THORWOW_KEY_ALIAS", "THORWOW_KEY_PASS").all {
                 !System.getenv(it).isNullOrBlank()
-            }) { "Release signing needs all four WC_KEY* environment values; use modernDebug for development" }
+            }) { "Release signing needs all four THORWOW_KEY* environment values; use modernDebug for development" }
         }
     }
 }
